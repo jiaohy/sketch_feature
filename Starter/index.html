@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Homework 1 Starter</title>
+	<!-- An AMD-loader like RequireJS is necessary for srlib's asynchronous modules -->
+	<script src="require.js"></script>
+	<!-- Load srlib following RequireJS -->
+	<script src="srlib.js"></script>
+	<!-- JQuery provides a very nice set of tools when dealing with AJAX requests -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+	<script type="text/javascript">
+	// Begin processing once webpage loaded
+	$(document).ready(function() {
+		// Globals
+		sketches = {};
+		deserializer = new srlib.core.data.io.Deserializer();
+		getSketches();
+	});
+
+	// Draw data on update of sketch selection
+	function updateCanvas() {
+		var c = document.getElementById("sketch");
+		var ctx = c.getContext("2d");
+
+		// Clear canvas first
+		ctx.clearRect(0,0,c.width,c.height);
+
+		// Draw new shape
+		ctx.beginPath();
+		ctx.lineWidth = "5";
+		ctx.strokeStyle = "red";  // Red path
+
+		var current = sketches[$('#sketches').val()]; // Select the sketch selected from global dictionary
+		for (var key in current.getStrokes()) {
+			var stroke = current.getStrokes()[key]; // Select the stroke
+			var points = stroke.getPoints();
+			for (var i = 0; i < points.length; i++) { // Set path to point values
+				if (i == 0) {
+					ctx.moveTo(points[i].getX(),points[i].getY());
+				}
+				else {
+					ctx.lineTo(points[i].getX(),points[i].getY());
+				}
+			}
+		}
+		ctx.stroke();  // Draw it
+	}
+
+	// Load data, populating global dictionary of sketch objects and selection list for viewing ease
+	function getSketches() {
+		// Sample sketches have the domain "rubine" while the letters have the domain "letters"
+		// See http://srl-prod1.cs.tamu.edu:7750/doc/ for more info about using the API
+		$.ajax({url: "http://srl-prod1.cs.tamu.edu:7750/getIds?domain=rubine", success: function(result){
+			// After retrieving the ids, we need the sketches themselves
+			$.when($.each(result, function (i) {
+				// Even though the AJAX calls are synchronous with async: false, the each function is still asynchronous, so we won't see any impact on the parallelism
+				// This is simply to ensure all sketches are loaded once the "when-then" condition triggers
+				$.ajax({url: "http://srl-prod1.cs.tamu.edu:7750/getSketches?id="+result[i], async: false, success: function(sketch){
+					sketch = sketch[0]; // /getSketches returns a list, but we only have a single sketch in this case
+					var s = deserializer.fromSketchMLJSON(JSON.stringify(sketch)); // Put in srlib object for processing
+					sketches[s.getId()] = s; // Add to dictionary of sketches
+					$('#sketches').append($('<option/>', { 
+						value: s.getId(), // Save sketch id as value for easy access from global dictionary
+						text : s.getId() // Show id as value
+					}));
+				}});
+			})).then(function() {getFeatures();}); // After retrieving all sketches, we can get the features
+		}});
+	}
+
+	// Build the Rubine features of all the sketches
+	// srlib provides easy access to the stroke (all sketches in this dataset are single-stroke) and its points as per the documentation
+	// Output a CSV where each row is the class or interpretation of the sketch followed by the 13 features
+	// console.log() on a comma-separated list is sufficient since the console output can be saved
+	function getFeatures() {
+		for (var key in sketches) {
+			var sketch = sketches[key];
+
+			// Get stroke/points
+			// Build features!
+			// Output comma-separated list to console
+
+		}
+	}
+	</script>
+</head>
+<!-- The body consists simply of a canvas for drawing and a selection list; this display is for the user's benefit, not required -->
+<body>
+
+<canvas id="sketch" width="1024" height="768" style="position:fixed;top:0px;left:0px;border:1px solid #d3d3d3">
+Your browser does not support the HTML5 canvas tag.</canvas>
+
+<select id="sketches" size="2" style="position:fixed;top:0px;left:0px;width:20%;height:100%;" onchange="updateCanvas()"></select>
+
+</body>
+</html>
